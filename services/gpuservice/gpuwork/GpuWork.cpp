@@ -19,7 +19,6 @@
 #define ATRACE_TAG ATRACE_TAG_GRAPHICS
 
 #include "gpuwork/GpuWork.h"
-#include <sys/stat.h>
 
 #include <android-base/stringprintf.h>
 #include <binder/PermissionCache.h>
@@ -67,25 +66,6 @@ bool equalGpuIdUid(const android::gpuwork::GpuIdUid& l, const android::gpuwork::
 // Gets a BPF map from |mapPath|.
 template <class Key, class Value>
 bool getBpfMap(const char* mapPath, bpf::BpfMap<Key, Value>* out) {
-    struct stat st;
-    if (stat(mapPath, &st) != 0) {
-        return false;
-    }
-
-    errno = 0;
-    base::unique_fd testFd(bpf::mapRetrieveRW(mapPath));
-    if (testFd < 0) {
-        testFd.reset(bpf::mapRetrieveRO(mapPath));
-    }
-
-    if (testFd < 0) {
-        return false;
-    }
-
-    testFd.reset();
-
-    usleep(10000);
-
     errno = 0;
     auto map = bpf::BpfMap<Key, Value>(mapPath);
     if (!map.isValid()) {
@@ -156,7 +136,6 @@ void GpuWork::initialize() {
         }
 
         if (!getBpfMap("/sys/fs/bpf/map_gpuWork_gpu_work_global_data", &mGpuWorkGlobalDataMap)) {
-            mGpuWorkMap.reset();
             return;
         }
 
